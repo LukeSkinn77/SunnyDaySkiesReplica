@@ -20,17 +20,9 @@ export class SunnyDaySkies extends Phaser.Scene
     create()
     {
         this.highScore = 0;
-        this.player;
-        this.platform;
-        this.cars;
-        this.carsPool;
-        this.numberCars;
         this.score = 0;
         this.lastBird = 5000;
         this.lastPower = 15000;
-        this.bird;
-        this.powerup;
-        this.floatBar;
         this.floatPower = 100;
         this.isDead = false;
         this.numberCars = 0;
@@ -40,7 +32,7 @@ export class SunnyDaySkies extends Phaser.Scene
         this.screenHeight = settings.gameResolution[1]/2;
 
         //Sky
-        this.sky = this.add.tileSprite(this.screenWidth, this.screenHeight, 800,600,"background_sky").setTileScale(1.5);
+        this.sky = this.add.tileSprite(this.screenWidth, this.screenHeight, settings.gameResolution[0],settings.gameResolution[1],"background_sky").setTileScale(1.5);
     
         //Platform floor
         this.platform = this.physics.add.sprite(this.screenWidth, 636, "floor");
@@ -100,9 +92,12 @@ export class SunnyDaySkies extends Phaser.Scene
         this.player.line = new Phaser.Geom.Line(this.player.body.left, this.player.body.bottom, this.player.body.left - 1, this.player.body.bottom - 1);
         this.player.setScale(0.3)
         this.player.setCollideWorldBounds(true);
+
+        //Collider collision for cars and ground
         this.carCollide = this.physics.add.collider(this.player, this.cars, this.collideWithCar, null, this);
         this.physics.add.collider(this.player, this.platform, this.collideWithGround, null, this);
 
+        //Overlap collision for birds and powerups
         this.physics.add.overlap(this.player, this.bird, function()
         {
           this.playerState = StateEnum.DYING;
@@ -119,15 +114,14 @@ export class SunnyDaySkies extends Phaser.Scene
         this.isInAir = false;
         this.PlayerAnimations();
 
-
-
-
     
+        //Score and powerbar UI
         this.scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#000' });
-
         this.floatBar = this.add.sprite(700, 50, "floatbar");
         this.floatBarProgress = this.add.graphics();
         this.floatBarProgress.fillRect(this.floatBar.x - (this.floatBar.width * 0.5), this.floatBar.y -(this.floatBar.height * 0.5), 128, 32);
+
+        //Attaches event to function
         this.physics.world.on("floatprogress", this.FloatPowerBar, this);
 
         //Game Over Properties
@@ -146,6 +140,7 @@ export class SunnyDaySkies extends Phaser.Scene
       this.input.on("pointerdown", this.Jump, this);
     }
 
+    //Assigns animations
     PlayerAnimations()
     {
       this.anims.create({
@@ -220,8 +215,8 @@ export class SunnyDaySkies extends Phaser.Scene
 
     addCar(xPos,yPos)
     {
-      //this.numberCars++;
       var newCar;
+      //If cars available in pool, assigns and removes one from pool and spawns at left of screen
       if (this.carsPool.getLength())
       {
         newCar = this.carsPool.getFirst();
@@ -232,6 +227,7 @@ export class SunnyDaySkies extends Phaser.Scene
         newCar.visible = true;
         this.carsPool.remove(newCar);
       }
+      //Creates new car if unavailable in pool
       else
       {
         newCar = this.physics.add.sprite(xPos, yPos, "car");
@@ -247,9 +243,15 @@ export class SunnyDaySkies extends Phaser.Scene
     addSign(xPos, yPos)
     {
       var newSign;
+      //Retrieves sign from pool if possible
       if (this.signPool.getLength())
       {
         newSign = this.signPool.getFirst();
+        //Removes text
+        newSign.removeAt(1);
+        //Adds new text
+        var signtxt =  this.add.text(0,0, this.currentlyPassedCars, { fontSize: '32px', fill: '#000'});
+        newSign.addAt(signtxt, 1)
         newSign.x = xPos;
         newSign.y = yPos;
         newSign.active = true;
@@ -258,6 +260,7 @@ export class SunnyDaySkies extends Phaser.Scene
       }
       else
       {
+        //Creates new container with sprite and text
         newSign = this.add.container(xPos,yPos);
         var signPost = this.add.sprite(0, 0, "sign");
         var signText = this.add.text(0,0, this.currentlyPassedCars, { fontSize: '32px', fill: '#000'});
@@ -306,13 +309,18 @@ export class SunnyDaySkies extends Phaser.Scene
       if (!this.isDead)
       {
         this.isDead = true;
+
+        //Loads highscore from cookies, if not available, highscore is 0
         this.highScore = parseInt(localStorage.getItem('highscore')) || 0;
+        
+        //Saves highscore if higher than current
         if (this.score > this.highScore)
         {
           localStorage.setItem('highscore', this.score);
           this.highScore = this.score;
         }
         this.gameoverBackground.setVisible(true);
+
         //Button for resetting game setup
         this.flyButton.setVisible(true).setInteractive();
         this.flyButton.on("pointerdown", () =>{
@@ -327,17 +335,42 @@ export class SunnyDaySkies extends Phaser.Scene
       }
     }
 
+    //Sets power bar value
     FloatPowerBar()
     {
       this.floatBarProgress.clear();
       var value = this.floatBar.width/ 100;
       this.floatBarProgress.fillRect(this.floatBar.x - (this.floatBar.width * 0.5), this.floatBar.y -(this.floatBar.height * 0.5),  this.floatPower * value, 32);
     }
+
+    //Sets speed of cars and background
+    SpeedSetter(carSignSpeed, skySpeed, delta)
+    {
+      this.cars.getChildren().forEach(car => {
+        car.body.setVelocityX(carSignSpeed);
+      });
+      this.signs.getChildren().forEach(sign => {
+        sign.body.setVelocityX(carSignSpeed);
+      });
+      this.sky.tilePositionX += delta * skySpeed;
+    }
+
+    GetNearestCar()
+    {
+      var nearCar = settings.gameResolution[0];
+      this.cars.getChildren().forEach(function(car)
+      {
+        nearCar = Math.min(car.x, nearCar);
+      }, this)
+      return nearCar;
+    }
   
     update(time, delta)
     {
+      //Maintains player position
       this.player.x = settings.playerStartPosition[0];
 
+      //Sets line positions depending on direction, which is used to prevent player from walking off car
       if (this.player.isRight)
       {
         this.player.line = new Phaser.Geom.Line(this.player.body.right, this.player.body.bottom, this.player.body.right + 1, this.player.body.bottom - 1);
@@ -348,7 +381,7 @@ export class SunnyDaySkies extends Phaser.Scene
       }
 
       //Bird velocity
-      if (this.bird.active && this.bird.x < 850)
+      if (this.bird.active && this.bird.x < (settings.gameResolution[0] + 50))
       {
         this.bird.setVelocityX(100);
       }
@@ -359,7 +392,8 @@ export class SunnyDaySkies extends Phaser.Scene
         this.bird.setVelocityX(0);
       }
 
-      if (this.powerup.active && this.powerup.x < 850)
+      //Powerup velocity
+      if (this.powerup.active && this.powerup.x < (settings.gameResolution[0] + 50))
       {
         this.powerup.setVelocityX(80);
       }
@@ -370,42 +404,23 @@ export class SunnyDaySkies extends Phaser.Scene
         this.powerup.setVelocityX(0);
       }
 
-
-      if (this.isInAir) //Player In Air
+      //Player In Air
+      if (this.isInAir) 
       {
         switch(this.playerState)
         {
           case StateEnum.FLOATING:
-            this.cars.getChildren().forEach(car => {
-              car.body.setVelocityX(400.0);
-            });
-            this.signs.getChildren().forEach(sign => {
-              sign.body.setVelocityX(400.0);
-            });
-            this.sky.tilePositionX += delta * 0.7;
-
+            this.SpeedSetter(400.0, 0.7, delta);
             break;
           case StateEnum.FALLING:
-            this.cars.getChildren().forEach(car => {
-              car.body.setVelocityX(100.0);
-            });
-            this.signs.getChildren().forEach(sign => {
-              sign.body.setVelocityX(100.0);
-            });
-            this.sky.tilePositionX += delta * 0.3;
+            this.SpeedSetter(100.0, 0.3, delta);
             break;
           case StateEnum.DYING:
-            this.cars.getChildren().forEach(car => {
-              car.body.setVelocityX(150.0);
-            });
-            this.signs.getChildren().forEach(sign => {
-              sign.body.setVelocityX(150.0);
-            });
-            this.sky.tilePositionX += delta * 0.5;
+            this.SpeedSetter(150.0, 0.5, delta);
             break;
         }
         
-        //FloatBar
+        //FloatBar decreaser
         if (this.floatPower >= 0 && !this.isDead)
         {
           this.floatPower -= delta /100
@@ -421,7 +436,7 @@ export class SunnyDaySkies extends Phaser.Scene
 
         this.cars.getChildren().forEach(function(car)
         {
-          //If cars have passed, add points
+          //If cars have passed, add points and sign showing current num of cars
           if ((car.x >= this.player.x) && !car.isPassed && !this.isDead)
           {
             car.isPassed = true;
@@ -433,15 +448,31 @@ export class SunnyDaySkies extends Phaser.Scene
             this.scoreText.setText('Score: ' + this.score);
           }
   
-          //Kills car at certain point and adds one to end
+          //Kills car at certain point
           if (car.x > 800 + car.displayWidth/2)
           {
             this.cars.killAndHide(car);
             this.cars.remove(car);
-            this.addCar(-250, 515);
           }
         }, this); 
 
+        //Adds car if last car is far enough away
+        if (this.cars.getLength() < 5 && this.GetNearestCar() > 50)
+        {
+          this.addCar(-250, 515);
+        }
+
+        //Kills sign at certain point
+        this.signs.getChildren().forEach(function(sign)
+        {
+          if (sign.x > settings.gameResolution[0] + sign.displayWidth/2)
+          {
+            this.signs.killAndHide(sign);
+            this.signs.remove(sign);
+          }
+        }, this); 
+
+        
         //If enough time passed, reset bird and powerup
         if (time > this.lastBird)
         {
@@ -454,13 +485,16 @@ export class SunnyDaySkies extends Phaser.Scene
           this.lastPower = time + 15000;
         }      
       }
-      else //Player On Car
+      //Player On Car
+      else
       {
         this.canWalk = false;
+        //If player moving left
         if (this.input.mousePointer.x < this.player.x)
         {
           this.cars.getChildren().forEach(car => {
   
+            //Check if line intersects with car player on, enabling player to walk
             if (Phaser.Geom.Intersects.LineToRectangle(this.player.line, car.body))
             {
               this.canWalk = true;  
@@ -470,24 +504,11 @@ export class SunnyDaySkies extends Phaser.Scene
   
           if (this.canWalk)
           {
-            this.cars.getChildren().forEach(car => {
-              car.body.setVelocityX(100.0);
-            });
-            this.signs.getChildren().forEach(sign => {
-              sign.body.setVelocityX(100.0);
-            });
-            this.sky.tilePositionX += delta * 0.7;
+            this.SpeedSetter(100.0, 0.7, delta);
           }
           else
           {
-            this.cars.getChildren().forEach(car => {
-              car.body.setVelocityX(0.0);
-            });
-            this.signs.getChildren().forEach(sign => {
-              sign.body.setVelocityX(0.0);
-            });
-            this.sky.tilePositionX += delta * 0.5;
-
+            this.SpeedSetter(0.0, 0.5, delta);
           }
   
   
@@ -498,6 +519,7 @@ export class SunnyDaySkies extends Phaser.Scene
           
           }
         }
+        //If player moving Right
         else if (this.input.mousePointer.x > this.player.x)
         {
          this.cars.getChildren().forEach(car => {
@@ -511,25 +533,11 @@ export class SunnyDaySkies extends Phaser.Scene
   
         if (this.canWalk)
         {
-          this.cars.getChildren().forEach(car => {
-            car.body.setVelocityX(-100.0);
-          });
-          this.signs.getChildren().forEach(sign => {
-            sign.body.setVelocityX(-100.0);
-          });
-          this.sky.tilePositionX += delta * 0.3;
+          this.SpeedSetter(-100.0, 0.3, delta);
         }
         else
         {
-          this.cars.getChildren().forEach(car => {
-            car.body.setVelocityX(0.0);
-          });
-          this.signs.getChildren().forEach(sign => {
-            sign.body.setVelocityX(0.0);
-            
-          });
-          this.sky.tilePositionX += delta * 0.5;
-
+          this.SpeedSetter(0.0, 0.5, delta);
         }
   
   
@@ -541,13 +549,7 @@ export class SunnyDaySkies extends Phaser.Scene
         }
         else
         {
-          this.cars.getChildren().forEach(car => {
-            car.body.setVelocityX(0.0);
-          });
-          this.signs.getChildren().forEach(sign => {
-            sign.body.setVelocityX(0.0);
-          });
-          this.sky.tilePositionX += delta * 0.5;
+          this.SpeedSetter(0.0, 0.5, delta);
 
           if (this.player.anims.getCurrentKey() != "left")
           {

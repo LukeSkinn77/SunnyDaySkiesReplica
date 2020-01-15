@@ -9,13 +9,13 @@ export class LoadTitle extends Phaser.Scene
     {
         this.load.image("background_sky", 'src/assets/tex_background_sky.png');
 
-
         var loadBar = this.add.graphics({
             fillStyle:{
                 color: 0xffffff
             }
         })
 
+        //Sets files to be loaded
         var gameRes = {
             'image': [
                 ["car", 'src/assets/tex_car_big.png'],
@@ -30,26 +30,23 @@ export class LoadTitle extends Phaser.Scene
                 ["button_fly", 'src/assets/tex_button_flyagain_animation.png', {frameWidth: 512, frameHeight: 256 }]
             ]
         };
+        //Loads in the assets
         for (var res in gameRes)
         {
-            gameRes[res].forEach(function(arg){
+            gameRes[res].forEach(function(resource){
                 var load = this.load[res];
-                load && load.apply(this.load, arg);
+                load && load.apply(this.load, resource);
             },this);
         }
+
+        //While loading, load bar is filled in
         this.load.on("progress", (loadPercent)=> {
             loadBar.fillRect(0, 300, 800 * loadPercent, 100);
         })
 
+        //On completion, loads menu
         this.load.on("complete", ()=> {
             this.scene.start("MainMenu");
         })
-    }
-
-    create()
-    {
-        this.sky = this.add.image(400, 300, "background_sky");
-        this.sky.displayWidth = 800;
-        this.sky.displayHeight = 600;
     }
 }
