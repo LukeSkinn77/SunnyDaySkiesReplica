@@ -39,9 +39,8 @@ export class SunnyDaySkies extends Phaser.Scene
         this.screenWidth = settings.gameResolution[0]/2;
         this.screenHeight = settings.gameResolution[1]/2;
 
-        this.sky = this.add.image(this.screenWidth, this.screenHeight, "background_sky");
-        this.sky.displayWidth = 800;
-        this.sky.displayHeight = 600;
+        //Sky
+        this.sky = this.add.tileSprite(this.screenWidth, this.screenHeight, 800,600,"background_sky").setTileScale(1.5);
     
         //Platform floor
         this.platform = this.physics.add.sprite(this.screenWidth, 636, "floor");
@@ -268,11 +267,6 @@ export class SunnyDaySkies extends Phaser.Scene
         newSign.body.setImmovable(true);
         this.signs.add(newSign);
       }
-      console.log(newSign);
-      //var signText = this.add.text(newSign.x,newSign.y, this.currentlyPassedCars, { fontSize: '32px', fill: '#000' });
-      //newSign.m()
-      //var textCon = this.add.container(newSign.x,newSign.y, [newSign, signText]);
-      
     }
     
     collideWithCar()
@@ -342,6 +336,8 @@ export class SunnyDaySkies extends Phaser.Scene
   
     update(time, delta)
     {
+      this.player.x = settings.playerStartPosition[0];
+
       if (this.player.isRight)
       {
         this.player.line = new Phaser.Geom.Line(this.player.body.right, this.player.body.bottom, this.player.body.right + 1, this.player.body.bottom - 1);
@@ -373,8 +369,8 @@ export class SunnyDaySkies extends Phaser.Scene
         this.powerup.setVisible(false);
         this.powerup.setVelocityX(0);
       }
-  
-      this.player.x = settings.playerStartPosition[0];
+
+
       if (this.isInAir) //Player In Air
       {
         switch(this.playerState)
@@ -386,6 +382,8 @@ export class SunnyDaySkies extends Phaser.Scene
             this.signs.getChildren().forEach(sign => {
               sign.body.setVelocityX(400.0);
             });
+            this.sky.tilePositionX += delta * 0.7;
+
             break;
           case StateEnum.FALLING:
             this.cars.getChildren().forEach(car => {
@@ -394,6 +392,7 @@ export class SunnyDaySkies extends Phaser.Scene
             this.signs.getChildren().forEach(sign => {
               sign.body.setVelocityX(100.0);
             });
+            this.sky.tilePositionX += delta * 0.3;
             break;
           case StateEnum.DYING:
             this.cars.getChildren().forEach(car => {
@@ -402,6 +401,7 @@ export class SunnyDaySkies extends Phaser.Scene
             this.signs.getChildren().forEach(sign => {
               sign.body.setVelocityX(150.0);
             });
+            this.sky.tilePositionX += delta * 0.5;
             break;
         }
         
@@ -451,7 +451,7 @@ export class SunnyDaySkies extends Phaser.Scene
         if (time > this.lastPower)
         {
           this.setObject(this.powerup);
-          this.lastPower = time + 20000;
+          this.lastPower = time + 15000;
         }      
       }
       else //Player On Car
@@ -476,6 +476,7 @@ export class SunnyDaySkies extends Phaser.Scene
             this.signs.getChildren().forEach(sign => {
               sign.body.setVelocityX(100.0);
             });
+            this.sky.tilePositionX += delta * 0.7;
           }
           else
           {
@@ -485,6 +486,8 @@ export class SunnyDaySkies extends Phaser.Scene
             this.signs.getChildren().forEach(sign => {
               sign.body.setVelocityX(0.0);
             });
+            this.sky.tilePositionX += delta * 0.5;
+
           }
   
   
@@ -514,6 +517,7 @@ export class SunnyDaySkies extends Phaser.Scene
           this.signs.getChildren().forEach(sign => {
             sign.body.setVelocityX(-100.0);
           });
+          this.sky.tilePositionX += delta * 0.3;
         }
         else
         {
@@ -522,7 +526,10 @@ export class SunnyDaySkies extends Phaser.Scene
           });
           this.signs.getChildren().forEach(sign => {
             sign.body.setVelocityX(0.0);
+            
           });
+          this.sky.tilePositionX += delta * 0.5;
+
         }
   
   
@@ -540,6 +547,8 @@ export class SunnyDaySkies extends Phaser.Scene
           this.signs.getChildren().forEach(sign => {
             sign.body.setVelocityX(0.0);
           });
+          this.sky.tilePositionX += delta * 0.5;
+
           if (this.player.anims.getCurrentKey() != "left")
           {
             this.player.anims.play("right_static");
